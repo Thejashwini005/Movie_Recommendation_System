@@ -20,21 +20,6 @@ st.markdown("""
             font-family: 'Arial', sans-serif;
         }
 
-        /* Floating Circles for Animation */
-        .circle-animation {
-            position: absolute;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
-            animation: circleAnimation 10s ease infinite;
-        }
-        @keyframes circleAnimation {
-            0% { width: 50px; height: 50px; top: 10%; left: 10%; opacity: 0; }
-            25% { width: 100px; height: 100px; top: 20%; left: 30%; opacity: 1; }
-            50% { width: 150px; height: 150px; top: 50%; left: 50%; opacity: 0.5; }
-            75% { width: 100px; height: 100px; top: 80%; left: 70%; opacity: 1; }
-            100% { width: 50px; height: 50px; top: 10%; left: 10%; opacity: 0; }
-        }
-
         /* Header Styling */
         .header-container {
             display: flex;
@@ -47,83 +32,69 @@ st.markdown("""
             color:white;
         }
 
-        .menu-button {
-            font-size: 35px;
-            cursor: pointer;
-            border: none;
-            background-color: rgba(0,0,0,1);
-        }
-
         .header-title {
             font-size: 30px;
             font-weight: 900;
             color: white;
         }
-        .sidebar .sidebar-content {
-            background-color: rgba(0, 0, 0, 1); /* Transparent black */
-            border-radius: 10px;
-        }
-        .stSelectbox > div {
-            color: gray; /* Text color in the dropdown */
-        }
     </style>
 
-    <!-- Animated Circles -->
-    <div class="circle-animation" style="top: 10%; left: 10%; animation-delay: 2s;"></div>
-    <div class="circle-animation" style="top: 30%; left: 40%; animation-delay: 4s;"></div>
-    <div class="circle-animation" style="top: 60%; left: 70%; animation-delay: 6s;"></div>
-
-    <!-- Header with Menu Button -->
+    <!-- Header -->
     <div class="header-container">
-        <div class="menu-button" onclick="menuClick()"></div>
         <div class="header-title">Movie Recommendation System</div>
     </div>
-
-    <!-- Script to Trigger Sidebar -->
-    <script>
-        function menuClick() {
-            const menuButton = document.querySelector('button[aria-label="Menu Button"]');
-            if (menuButton) {
-                menuButton.click();
-            }
-        }
-    </script>
 """, unsafe_allow_html=True)
 
 # Initialize sidebar visibility state
-menu_options = ["Home", "Upload CSV File","Recommend","About"]
+menu_options = ["Home", "Upload CSV File", "Recommend", "About"]
 selected_option = st.sidebar.selectbox("Menu", menu_options)
 
 # Pages
 if selected_option == "Home":
-    st.header("Select movie from dropdown")
-    selectvalue = st.selectbox("Choose a Movie", ["Select a Movie"] + list(movies_list))
+    st.header("Search or Select a Movie")
 
-    if selectvalue != "Select a Movie":
-        try:
-            movie_details = movies[movies['Title'] == selectvalue].iloc[0]
-            title = movie_details['Title']
-            year = movie_details['Year of Release']
-            rate = movie_details['Rating']
-            review = movie_details['Number of Reviews']
-            cast = movie_details.get('Movie Cast', 'N/A')
-            director = movie_details.get('Director','N/A')
-            description = movie_details.get('Description','N/A')
+    # Create a searchable dropdown box
+    movie_input = st.selectbox("Type or select a movie from the dropdown:", ["Select a Movie"] + list(movies_list))
 
-            st.markdown(f"**Title:** <span style='color: white;'>{title}</span>", unsafe_allow_html=True)
-            st.markdown(f"**Year Of Release:** <span style='color: white;'>{year}</span>", unsafe_allow_html=True)
-            st.markdown(f"**Rating:** <span style='color: white;'>{rate}</span>", unsafe_allow_html=True)
-            st.markdown(f"**No Of Reviews:** <span style='color: white;'>{review}</span>", unsafe_allow_html=True)
-            st.markdown(f"**Cast:** <span style='color: white;'>{cast}</span>", unsafe_allow_html=True)
-            st.markdown(f"**Director:** <span style='color: white;'>{director}</span>", unsafe_allow_html=True)
-            st.markdown(f"**Description:** <span style='color: white;'>{description}</span>", unsafe_allow_html=True)
+    # Show details button appears only if a valid movie is selected
+    if movie_input != "Select a Movie":
+        if st.button("Show Details"):
+            # Check if the movie exists
+            movie_details = movies[movies['Title'] == movie_input]
+            if not movie_details.empty:
+                movie_details = movie_details.iloc[0]
+                title = movie_details['Title']
+                year = movie_details['Year of Release']
+                rate = movie_details['Rating']
+                review = movie_details['Number of Reviews']
+                cast = movie_details.get('Movie Cast', 'N/A')
+                director = movie_details.get('Director', 'N/A')
+                description = movie_details.get('Description', 'N/A')
 
-        except IndexError:
-            st.error("Movie details could not be found. Please try another selection.")
+                
+
+                # Display movie details
+                st.markdown(f"**Title:** <span style='color: white;'>{title}</span>", unsafe_allow_html=True)
+                st.markdown(f"**Year Of Release:** <span style='color: white;'>{year}</span>", unsafe_allow_html=True)
+                st.markdown(f"**Rating:** <span style='color: white;'>{rate}</span>", unsafe_allow_html=True)
+                st.markdown(f"**No Of Reviews:** <span style='color: white;'>{review}</span>", unsafe_allow_html=True)
+                st.markdown(f"**Cast:** <span style='color: white;'>{cast}</span>", unsafe_allow_html=True)
+                st.markdown(f"**Director:** <span style='color: white;'>{director}</span>", unsafe_allow_html=True)
+                st.markdown(f"**Description:** <span style='color: white;'>{description}</span>", unsafe_allow_html=True)
+
+                index = movies[movies['Title'] == movie_input].index[0]
+                similar_movies = sorted(list(enumerate(similarity[index])), key=lambda x: x[1], reverse=True)[1:6]
+                st.subheader("Recommended Movies:")
+                for i, (idx, score) in enumerate(similar_movies, 1):
+                    st.write(f"{i}. {movies.iloc[idx]['Title']}")
+            else:
+                # Movie not found
+                st.error("No details found for the selected movie. Please try another movie.")
+
     else:
-        st.markdown("**Please select a movie to see its details.**", unsafe_allow_html=True)
+        st.info("Please select or type a movie to proceed.")
 
-elif selected_option == "Upload Dataset":
+elif selected_option == "Upload CSV File":
     st.header("Upload Your Dataset")
     uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
     if uploaded_file is not None:
