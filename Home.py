@@ -5,6 +5,8 @@ import pandas as pd
 # Load movie data
 movies = pickle.load(open("moviesList.pkl", 'rb'))
 similarity = pickle.load(open("similar.pkl", 'rb'))
+similarity1 = pickle.load(open("Title_similar.pkl", 'rb'))
+similarity2 = pickle.load(open("Des_similar.pkl", 'rb'))
 movies_list = movies['Title'].values
 
 # HTML and CSS for Background, Header, and Menu
@@ -84,8 +86,20 @@ if selected_option == "Home":
 
                 index = movies[movies['Title'] == movie_input].index[0]
                 similar_movies = sorted(list(enumerate(similarity[index])), key=lambda x: x[1], reverse=True)[1:6]
-                st.subheader("Recommended Movies:")
+                st.subheader("Recommended Movies Based on Cast")
                 for i, (idx, score) in enumerate(similar_movies, 1):
+                    st.write(f"{i}. {movies.iloc[idx]['Title']}")
+
+                index = movies[movies['Title'] == movie_input].index[0]
+                similar_movies1 = sorted(list(enumerate(similarity1[index])), key=lambda x: x[1], reverse=True)[1:6]
+                st.subheader("Recommended Movies Based on Title:")
+                for i, (idx, score) in enumerate(similar_movies1, 1):
+                    st.write(f"{i}. {movies.iloc[idx]['Title']}")    
+
+                index = movies[movies['Title'] == movie_input].index[0]
+                similar_movies2 = sorted(list(enumerate(similarity2[index])), key=lambda x: x[1], reverse=True)[1:6]
+                st.subheader("Recommended Movies Based on Description:")
+                for i, (idx, score) in enumerate(similar_movies2, 1):
                     st.write(f"{i}. {movies.iloc[idx]['Title']}")
             else:
                 # Movie not found
