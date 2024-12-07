@@ -1,6 +1,11 @@
 import streamlit as st
 import pickle
 import pandas as pd
+import requests
+import random
+
+TMDB_API_KEY = "c297c43d34d05fcfdcd03d10f634813a"  # Replace with your TMDb API key
+TMDB_BASE_URL = "https://api.themoviedb.org/3"
 
 # Load movie data
 movies = pickle.load(open("moviesList.pkl", 'rb'))
@@ -8,6 +13,34 @@ similarity = pickle.load(open("similar.pkl", 'rb'))
 similarity1 = pickle.load(open("Title_similar.pkl", 'rb'))
 similarity2 = pickle.load(open("Des_similar.pkl", 'rb'))
 movies_list = movies['Title'].values
+
+# Function to fetch movie poster from TMDB API
+def fetch_movie_poster(movie_name):
+    search_url = f"{TMDB_BASE_URL}/search/movie?api_key={TMDB_API_KEY}&query={movie_name}"
+    response = requests.get(search_url)
+    if response.status_code == 200:
+        results = response.json().get("results")
+        if results:
+            poster_path = results[0].get("poster_path")
+            if poster_path:
+                return f"https://image.tmdb.org/t/p/w500{poster_path}"
+    return None
+
+# Function to display recommendations
+def display_recommendations(similarity_data, header):
+    st.subheader(header)
+    index = movies[movies['Title'] == movie_input].index[0]
+    similar_movies = sorted(list(enumerate(similarity_data[index])), key=lambda x: x[1], reverse=True)[1:6]
+    
+    # Display posters and titles side by side
+    cols = st.columns(len(similar_movies))
+    for idx, col in zip(similar_movies, cols):
+        rec_title = movies.iloc[idx[0]]['Title']
+        rec_poster_url = fetch_movie_poster(rec_title)
+        with col:
+            if rec_poster_url:
+                st.image(rec_poster_url, use_container_width=True)
+            st.markdown(f"<div style='text-align: center; color: white;'>{rec_title}</div>", unsafe_allow_html=True)
 
 # HTML and CSS for Background, Header, and Menu
 st.markdown("""
@@ -22,16 +55,68 @@ st.markdown("""
             font-family: 'Arial', sans-serif;
         }
 
+        /* Animated Background Pattern (Moving circles) */
+        .circle-animation {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            animation: circleAnimation 10s ease infinite;
+        }
+
+        /* Animation for circles */
+        @keyframes circleAnimation {
+            0% {
+                width: 50px;
+                height: 50px;
+                top: 20%;
+                left: 20%;
+                opacity: 0;
+            }
+            25% {
+                width: 100px;
+                height: 100px;
+                top: 40%;
+                left: 40%;
+                opacity: 1;
+            }
+            50% {
+                width: 150px;
+                height: 150px;
+                top: 60%;
+                left: 60%;
+                opacity: 0.5;
+            }
+            75% {
+                width: 100px;
+                height: 100px;
+                top: 80%;
+                left: 80%;
+                opacity: 1;
+            }
+            100% {
+                width: 50px;
+                height: 50px;
+                top: 20%;
+                left: 20%;
+                opacity: 0;
+            }
+        }
+
         /* Header Styling */
         .header-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 20px;
-            background: rgba(97, 11, 11, 0.3); /* Semi-transparent black */
+            background: rgba(97, 11, 11, 0.3); /* Transparent black background */
             border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            color:white;
+            box-shadow: 0 4px 6px rgba(118, 71, 89, 0.5);
+            z-index: 1;
+        }
+
+        .menu-button {
+            font-size: 35px;
+            cursor: pointer;
         }
 
         .header-title {
@@ -40,15 +125,27 @@ st.markdown("""
             color: white;
         }
     </style>
-
-    <!-- Header -->
+    
+    <!-- Floating Circles Animation for added dynamic effect -->
+    <div class="circle-animation" style="top: 10%; left: 15%; animation-delay: 2s;"></div>
+    <div class="circle-animation" style="top: 40%; left: 50%; animation-delay: 4s;"></div>
+    <div class="circle-animation" style="top: 70%; left: 80%; animation-delay: 6s;"></div>
     <div class="header-container">
-        <div class="header-title">Movie Recommendation System</div>
+        <div class="menu-button" onclick="menuClick()"></div>
+        <div class="header-title">Movie Recommender System</div>
     </div>
+    <script>
+        function menuClick() {
+            const btn = document.querySelector('button[aria-label="Menu Button"]');
+            if (btn) {
+                btn.click();
+            }
+        }
+    </script>
 """, unsafe_allow_html=True)
 
 # Initialize sidebar visibility state
-menu_options = ["Home", "Upload CSV File", "Recommend", "About"]
+menu_options = ["Home", "Recommend", "About"]
 selected_option = st.sidebar.selectbox("Menu", menu_options)
 
 # Pages
@@ -73,34 +170,23 @@ if selected_option == "Home":
                 director = movie_details.get('Director', 'N/A')
                 description = movie_details.get('Description', 'N/A')
 
-                
+                poster_url = fetch_movie_poster(title)
 
                 # Display movie details
-                st.markdown(f"**Title:** <span style='color: white;'>{title}</span>", unsafe_allow_html=True)
-                st.markdown(f"**Year Of Release:** <span style='color: white;'>{year}</span>", unsafe_allow_html=True)
-                st.markdown(f"**Rating:** <span style='color: white;'>{rate}</span>", unsafe_allow_html=True)
-                st.markdown(f"**No Of Reviews:** <span style='color: white;'>{review}</span>", unsafe_allow_html=True)
-                st.markdown(f"**Cast:** <span style='color: white;'>{cast}</span>", unsafe_allow_html=True)
-                st.markdown(f"**Director:** <span style='color: white;'>{director}</span>", unsafe_allow_html=True)
-                st.markdown(f"**Description:** <span style='color: white;'>{description}</span>", unsafe_allow_html=True)
-
-                index = movies[movies['Title'] == movie_input].index[0]
-                similar_movies = sorted(list(enumerate(similarity[index])), key=lambda x: x[1], reverse=True)[1:6]
-                st.subheader("Recommended Movies Based on Cast")
-                for i, (idx, score) in enumerate(similar_movies, 1):
-                    st.write(f"{i}. {movies.iloc[idx]['Title']}")
-
-                index = movies[movies['Title'] == movie_input].index[0]
-                similar_movies1 = sorted(list(enumerate(similarity1[index])), key=lambda x: x[1], reverse=True)[1:6]
-                st.subheader("Recommended Movies Based on Title:")
-                for i, (idx, score) in enumerate(similar_movies1, 1):
-                    st.write(f"{i}. {movies.iloc[idx]['Title']}")    
-
-                index = movies[movies['Title'] == movie_input].index[0]
-                similar_movies2 = sorted(list(enumerate(similarity2[index])), key=lambda x: x[1], reverse=True)[1:6]
-                st.subheader("Recommended Movies Based on Description:")
-                for i, (idx, score) in enumerate(similar_movies2, 1):
-                    st.write(f"{i}. {movies.iloc[idx]['Title']}")
+                if poster_url:
+                    st.image(poster_url, width=300, caption=f"Poster for {title}")
+                st.markdown(f"**Title:** {title}")
+                st.markdown(f"**Year of Release:** {year}")
+                st.markdown(f"**Rating:** {rate}")
+                st.markdown(f"**Number of Reviews:** {review}")
+                st.markdown(f"**Cast:** {cast}")
+                st.markdown(f"**Director:** {director}")
+                st.markdown(f"**Description:** {description}")
+               
+                # Recommendations
+                display_recommendations(similarity, "Recommended Movies Based on Cast")
+                display_recommendations(similarity1, "Recommended Movies Based on Title")
+                display_recommendations(similarity2, "Recommended Movies Based on Description")
             else:
                 # Movie not found
                 st.error("No details found for the selected movie. Please try another movie.")
@@ -108,22 +194,52 @@ if selected_option == "Home":
     else:
         st.info("Please select or type a movie to proceed.")
 
-elif selected_option == "Upload CSV File":
-    st.header("Upload Your Dataset")
-    uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
-    if uploaded_file is not None:
-        try:
-            data = pd.read_csv(uploaded_file)
-            st.success("File uploaded successfully!")
-            st.dataframe(data.head())  # Display the first few rows of the uploaded dataset
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
+elif selected_option == "Recommend":
+    st.header("Random Movie Recommendations")
+    random_movies = random.sample(list(movies_list), 10)
 
+    selected_movie = None
+    cols = st.columns(len(random_movies))
+    for col, movie_title in zip(cols, random_movies):
+        poster_url = fetch_movie_poster(movie_title)
+        with col:
+            if st.button(movie_title):
+                selected_movie = movie_title
+            st.image(poster_url, width=150)
+            st.caption(movie_title)
+
+    # If a movie is clicked, show its details
+    if selected_movie:
+        st.header(f"Details for {selected_movie}")
+        movie_details = movies[movies['Title'] == selected_movie]
+        if not movie_details.empty:
+            movie_details = movie_details.iloc[0]
+            title = movie_details['Title']
+            year = movie_details['Year of Release']
+            rate = movie_details['Rating']
+            review = movie_details['Number of Reviews']
+            cast = movie_details.get('Movie Cast', 'N/A')
+            director = movie_details.get('Director', 'N/A')
+            description = movie_details.get('Description', 'N/A')
+            poster_url = fetch_movie_poster(title)
+
+            # Display movie details
+            if poster_url:
+                st.image(poster_url, width=300, caption=f"Poster for {title}")
+            st.markdown(f"**Title:** {title}")
+            st.markdown(f"**Year of Release:** {year}")
+            st.markdown(f"**Rating:** {rate}")
+            st.markdown(f"**Number of Reviews:** {review}")
+            st.markdown(f"**Cast:** {cast}")
+            st.markdown(f"**Director:** {director}")
+            st.markdown(f"**Description:** {description}")
+        else:
+            st.error("No details found for the selected movie.")
 elif selected_option == "About":
     st.header("About")
     st.markdown("""
         Welcome to the **Movie Recommender System**! 🎥  
-        This website allows users to explore movies, view details about each movie, and even upload custom datasets for analysis.  
+        This website allows users to explore movies, view details about each movie.  
         ### Features:
         - Explore and learn more about your favorite movies.
         - Upload your own dataset and view its contents.
